@@ -1,0 +1,484 @@
+import React, { useState, useEffect, useMemo } from 'react'
+import { Contact, CadenceStage, ResponseStatus, InterestLevel, ViewMode, FollowUpFilter } from './types/crm'
+import { loadContacts, saveContacts, exportContactsAsCSV, exportContactsAsJSON } from './lib/storage'
+import { addDaysToToday } from './lib/utils'
+import { Navbar } from './components/Navbar'
+import { MetricsCards } from './components/MetricsCards'
+import { CadenceFilter } from './components/CadenceFilter'
+import { ContactTable } from './components/ContactTable'
+import { ContactKanban } from './components/ContactKanban'
+import { FollowUpAgenda } from './components/FollowUpAgenda'
+import { ContactModal } from './components/ContactModal'
+import { ContactDrawer } from './components/ContactDrawer'
+import { SmartImportModal } from './components/SmartImportModal'
+import { Toaster, toast } from 'sonner'
+import confetti from 'canvas-confetti'
+
+export function App() {
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [viewMode, setViewMode] = useState<ViewMode>('table')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<FollowUpFilter>('all')
+  const [selectedStage, setSelectedStage] = useState<CadenceStage | 'all'>('all')
+  const [selectedResponse, setSelectedResponse] = useState<ResponseStatus | 'all'>('all')
+  const [selectedInterest, setSelectedInterest] = useState<InterestLevel | 'all'>('all')
+  const [darkMode, setDarkMode] = useState(true)
+
+  // Modals state
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  const [drawerContact, setDrawerContact] = useState<Contact | null>(null)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+
+  // Load initial contacts
+  useEffect(() => {
+    const loaded = loadContacts()
+    setContacts(loaded)
+
+    const handleUpdate = () => {
+      setContacts(loadContacts())
+    }
+    window.addEventListener('crm_contacts_updated', handleUpdate)
+    return () => window.removeEventListener('crm_contacts_updated', handleUpdate)
+  }, [])
+
+  // Dark Mode toggle on <html>
+  useEffect(() => {
+    const root = document.documentElement
+    if (darkMode) {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+  }, [darkMode])
+
+  // Sync drawer contact if contacts update
+  useEffect(() => {
+    if (drawerContact) {
+      const updated = contacts.find(c => c.id === drawerContact.id)
+      if (updated) setDrawerContact(updated)
+    }
+  }, [contacts])
+
+  // Save contacts helper
+  const handleSaveContacts = (newContacts: Contact[]) => {
+    setContacts(newContacts)
+    saveContacts(newContacts)
+  }
+
+  // Create or Update Contact
+  const handleSaveContact = (contactData: Partial<Contact>) => {
+    const now = new Date().toISOString()
+    if (editingContact) {
+      // Update existing
+      const updated = contacts.map(c => {
+        if (c.id === editingContact.id) {
+          return {
+            ...c,
+            ...contactData,
+            updatedAt: now,
+            interactionHistory: [
+              ...c.interactionHistory,
+              {
+                id: 'log_' + Math.random().toString(36).substring(2, 9),
+                timestamp: now,
+                type: 'system' as const,
+                content: 'Dados do contato atualizados.'
+              }
+            ]
+          } as Contact
+        }
+        return c
+      })
+      handleSaveContacts(updated)
+      toast.success('Contato atualizado com sucesso!')
+    } else {
+      // Create new
+      const newContact: Contact = {
+        id: 'lead_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now(),
+        name: contactData.name || '',
+        phone: contactData.phone || '',
+        cleanPhone: contactData.cleanPhone || '',
+        email: contactData.email || '',
+        company: contactData.company || '',
+        role: contactData.role || '',
+        stage: contactData.stage || 'novo',
+        responseStatus: contactData.responseStatus || 'aguardando',
+        interestLevel: contactData.interestLevel || 'medio',
+        nextFollowUpDate: contactData.nextFollowUpDate || addDaysToToday(0),
+        nextFollowUpTime: contactData.nextFollowUpTime || '10:00',
+        notes: contactData.notes || '',
+        tags: contactData.tags || [],
+        interactionHistory: [
+          {
+            id: 'log_' + Math.random().toString(36).substring(2, 9),
+            timestamp: now,
+            type: 'system' as const,
+            content: 'Contato cadastrado no CRM.'
+          }
+        ],
+        createdAt: now,
+        updatedAt: now
+      }
+      handleSaveContacts([newContact, ...contacts])
+      toast.success('Novo contato adicionado ao CRM!')
+    }
+  }
+
+  // Delete Contact
+  const handleDeleteContact = (id: string) => {
+    const filtered = contacts.filter(c => c.id !== id)
+    handleSaveContacts(filtered)
+    if (drawerContact?.id === id) setDrawerContact(null)
+    toast.info('Contato removido.')
+  }
+
+  // Update Stage
+  const handleUpdateStage = (contactId: string, newStage: CadenceStage) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        if (newStage === 'fechado') {
+          confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+        }
+        return {
+          ...c,
+          stage: newStage,
+          updatedAt: now,
+          interactionHistory: [
+            ...c.interactionHistory,
+            {
+              id: 'log_' + Math.random().toString(36).substring(2, 9),
+              timestamp: now,
+              type: 'cadence_change' as const,
+              content: `Estágio alterado para: ${newStage}`
+            }
+          ]
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success('Estágio de cadência atualizado!')
+  }
+
+  // Quick Advance Follow-up (+X days)
+  const handleAdvanceFollowUp = (contactId: string, days: number) => {
+    const newDate = addDaysToToday(days)
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          nextFollowUpDate: newDate,
+          updatedAt: now,
+          interactionHistory: [
+            ...c.interactionHistory,
+            {
+              id: 'log_' + Math.random().toString(36).substring(2, 9),
+              timestamp: now,
+              type: 'note' as const,
+              content: `Follow-up reagendado para daqui a ${days} dias (${newDate}).`
+            }
+          ]
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success(`Follow-up reagendado para ${newDate}!`)
+  }
+
+  // Quick Mark Replied
+  const handleQuickMarkReplied = (contactId: string) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          responseStatus: 'respondeu' as ResponseStatus,
+          stage: c.stage === 'novo' || c.stage === 'primeiro_contato' || c.stage === 'followup_1' || c.stage === 'followup_2' ? 'respondeu_qualificando' : c.stage,
+          updatedAt: now,
+          interactionHistory: [
+            ...c.interactionHistory,
+            {
+              id: 'log_' + Math.random().toString(36).substring(2, 9),
+              timestamp: now,
+              type: 'whatsapp' as const,
+              content: 'Marcado como: Respondeu ao contato.'
+            }
+          ]
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success('Contato marcado como "Respondeu"!')
+  }
+
+  // Add Note to contact
+  const handleAddNote = (contactId: string, noteText: string) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          notes: noteText,
+          updatedAt: now,
+          interactionHistory: [
+            ...c.interactionHistory,
+            {
+              id: 'log_' + Math.random().toString(36).substring(2, 9),
+              timestamp: now,
+              type: 'note' as const,
+              content: noteText
+            }
+          ]
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+  }
+
+  // Update follow-up from drawer
+  const handleUpdateFollowUp = (contactId: string, date: string, time?: string) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          nextFollowUpDate: date,
+          nextFollowUpTime: time || c.nextFollowUpTime,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success('Data de follow-up atualizada!')
+  }
+
+  // Update response from drawer
+  const handleUpdateResponse = (contactId: string, responseStatus: ResponseStatus) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          responseStatus,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success('Status de resposta atualizado!')
+  }
+
+  // Update interest from drawer
+  const handleUpdateInterest = (contactId: string, interestLevel: InterestLevel) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          interestLevel,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+    toast.success('Nível de interesse atualizado!')
+  }
+
+  // Batch import from modal
+  const handleImportBatch = (newBatch: Contact[]) => {
+    handleSaveContacts([...newBatch, ...contacts])
+  }
+
+  // Filtered contacts calculation
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  const filteredContacts = useMemo(() => {
+    return contacts.filter(c => {
+      // 1. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchName = (c.name || '').toLowerCase().includes(q)
+        const matchPhone = (c.phone || '').includes(q) || (c.cleanPhone || '').includes(q)
+        const matchEmail = (c.email || '').toLowerCase().includes(q)
+        const matchCompany = (c.company || '').toLowerCase().includes(q)
+        const matchTags = c.tags.some(t => t.toLowerCase().includes(q))
+        if (!matchName && !matchPhone && !matchEmail && !matchCompany && !matchTags) {
+          return false
+        }
+      }
+
+      // 2. Stage Filter
+      if (selectedStage !== 'all' && c.stage !== selectedStage) {
+        return false
+      }
+
+      // 3. Response Status Filter
+      if (selectedResponse !== 'all' && c.responseStatus !== selectedResponse) {
+        return false
+      }
+
+      // 4. Interest Filter
+      if (selectedInterest !== 'all' && c.interestLevel !== selectedInterest) {
+        return false
+      }
+
+      // 5. Follow-up Filter Badges
+      if (activeFilter === 'today') {
+        return c.nextFollowUpDate === todayStr && c.stage !== 'fechado' && c.stage !== 'perdido'
+      } else if (activeFilter === 'overdue') {
+        return c.nextFollowUpDate && c.nextFollowUpDate < todayStr && c.stage !== 'fechado' && c.stage !== 'perdido'
+      } else if (activeFilter === 'upcoming') {
+        return c.nextFollowUpDate && c.nextFollowUpDate > todayStr && c.stage !== 'fechado' && c.stage !== 'perdido'
+      } else if (activeFilter === 'replied') {
+        return c.responseStatus === 'respondeu'
+      } else if (activeFilter === 'hot') {
+        return c.interestLevel === 'alto' && c.stage !== 'fechado' && c.stage !== 'perdido'
+      }
+
+      return true
+    })
+  }, [contacts, searchQuery, selectedStage, selectedResponse, selectedInterest, activeFilter, todayStr])
+
+  const hasActiveFilters = 
+    activeFilter !== 'all' || 
+    selectedStage !== 'all' || 
+    selectedResponse !== 'all' || 
+    selectedInterest !== 'all' || 
+    Boolean(searchQuery)
+
+  const handleClearFilters = () => {
+    setActiveFilter('all')
+    setSelectedStage('all')
+    setSelectedResponse('all')
+    setSelectedInterest('all')
+    setSearchQuery('')
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <Toaster position="top-right" richColors />
+
+      {/* Navbar */}
+      <Navbar
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onOpenNewContact={() => {
+          setEditingContact(null)
+          setIsModalOpen(true)
+        }}
+        onOpenImport={() => setIsImportModalOpen(true)}
+        onExportCSV={() => exportContactsAsCSV(contacts)}
+        onExportJSON={() => exportContactsAsJSON(contacts)}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+        totalContacts={contacts.length}
+      />
+
+      {/* Main Container */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        {/* KPI Metrics */}
+        <MetricsCards
+          contacts={contacts}
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+        />
+
+        {/* Filters */}
+        <CadenceFilter
+          activeFilter={activeFilter}
+          setActiveFilter={setActiveFilter}
+          selectedStage={selectedStage}
+          setSelectedStage={setSelectedStage}
+          selectedResponse={selectedResponse}
+          setSelectedResponse={setSelectedResponse}
+          selectedInterest={selectedInterest}
+          setSelectedInterest={setSelectedInterest}
+          onClearFilters={handleClearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
+
+        {/* Views */}
+        {viewMode === 'table' && (
+          <ContactTable
+            contacts={filteredContacts}
+            onSelectContact={(c) => setDrawerContact(c)}
+            onEditContact={(c) => {
+              setEditingContact(c)
+              setIsModalOpen(true)
+            }}
+            onDeleteContact={handleDeleteContact}
+            onUpdateStage={handleUpdateStage}
+            onAdvanceFollowUp={handleAdvanceFollowUp}
+          />
+        )}
+
+        {viewMode === 'kanban' && (
+          <ContactKanban
+            contacts={filteredContacts}
+            onSelectContact={(c) => setDrawerContact(c)}
+            onUpdateStage={handleUpdateStage}
+            onOpenNewContact={() => {
+              setEditingContact(null)
+              setIsModalOpen(true)
+            }}
+          />
+        )}
+
+        {viewMode === 'agenda' && (
+          <FollowUpAgenda
+            contacts={contacts}
+            onSelectContact={(c) => setDrawerContact(c)}
+            onAdvanceFollowUp={handleAdvanceFollowUp}
+            onUpdateStage={handleUpdateStage}
+            onQuickMarkReplied={handleQuickMarkReplied}
+          />
+        )}
+
+      </main>
+
+      {/* Modals & Drawers */}
+      <ContactModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveContact}
+        initialContact={editingContact}
+      />
+
+      <ContactDrawer
+        contact={drawerContact}
+        isOpen={Boolean(drawerContact)}
+        onClose={() => setDrawerContact(null)}
+        onEdit={(c) => {
+          setEditingContact(c)
+          setIsModalOpen(true)
+        }}
+        onDelete={handleDeleteContact}
+        onAddNote={handleAddNote}
+        onUpdateStage={handleUpdateStage}
+        onUpdateFollowUp={handleUpdateFollowUp}
+        onUpdateResponse={handleUpdateResponse}
+        onUpdateInterest={handleUpdateInterest}
+      />
+
+      <SmartImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportBatch={handleImportBatch}
+      />
+
+    </div>
+  )
+}
+export default App
