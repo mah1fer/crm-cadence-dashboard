@@ -48,17 +48,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           
           {/* Logo & CRM Title */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-              <Users className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
+              <Sparkles className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-heading font-bold text-lg tracking-tight bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent">
-                  CRM Pro
+                <span className="font-heading font-extrabold text-xl tracking-tight bg-gradient-to-r from-violet-400 via-indigo-300 to-cyan-300 bg-clip-text text-transparent">
+                  MORF PRO
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  <Sparkles className="w-3 h-3 text-blue-400" />
-                  Cadência
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-500/15 text-violet-300 border border-violet-500/30 tracking-wide uppercase">
+                  CRM Cadência
                 </span>
               </div>
               <p className="text-xs text-muted-foreground hidden sm:block">

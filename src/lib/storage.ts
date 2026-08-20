@@ -1,7 +1,7 @@
 import { Contact } from '../types/crm'
 import { INITIAL_CONTACTS } from '../data/initialContacts'
 
-const STORAGE_KEY = 'crm_cadence_contacts_v1'
+const STORAGE_KEY = 'morf_pro_crm_contacts_v2'
 
 export function loadContacts(): Contact[] {
   try {
@@ -31,23 +31,25 @@ export function exportContactsAsJSON(contacts: Contact[]): void {
   const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(contacts, null, 2))
   const downloadAnchor = document.createElement('a')
   downloadAnchor.setAttribute('href', dataStr)
-  downloadAnchor.setAttribute('download', `crm_contatos_backup_${new Date().toISOString().split('T')[0]}.json`)
+  downloadAnchor.setAttribute('download', `morf_pro_contatos_${new Date().toISOString().split('T')[0]}.json`)
   document.body.appendChild(downloadAnchor)
   downloadAnchor.click()
   downloadAnchor.remove()
 }
 
 export function exportContactsAsCSV(contacts: Contact[]): void {
-  const headers = ['Nome', 'Telefone', 'Email', 'Empresa', 'Estagio Cadencia', 'Status Resposta', 'Interesse', 'Proximo Follow-up', 'Notas']
+  const headers = ['Nome', 'Telefone', 'Email', 'Empresa', 'Cargo', 'Estagio Cadencia', 'Status Resposta', 'Interesse', 'Proximo Follow-up', 'Tags', 'Notas']
   const rows = contacts.map(c => [
     `"${(c.name || '').replace(/"/g, '""')}"`,
     `"${(c.phone || '').replace(/"/g, '""')}"`,
     `"${(c.email || '').replace(/"/g, '""')}"`,
     `"${(c.company || '').replace(/"/g, '""')}"`,
+    `"${(c.role || '').replace(/"/g, '""')}"`,
     `"${c.stage}"`,
     `"${c.responseStatus}"`,
     `"${c.interestLevel}"`,
     `"${c.nextFollowUpDate || ''}"`,
+    `"${(c.tags || []).join('; ')}"`,
     `"${(c.notes || '').replace(/"/g, '""')}"`
   ])
 
@@ -55,7 +57,7 @@ export function exportContactsAsCSV(contacts: Contact[]): void {
   const encodedUri = encodeURI(csvContent)
   const link = document.createElement('a')
   link.setAttribute('href', encodedUri)
-  link.setAttribute('download', `crm_contatos_${new Date().toISOString().split('T')[0]}.csv`)
+  link.setAttribute('download', `morf_pro_contatos_${new Date().toISOString().split('T')[0]}.csv`)
   document.body.appendChild(link)
   link.click()
   link.remove()
