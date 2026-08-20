@@ -22,6 +22,7 @@ export function App() {
   const [selectedStage, setSelectedStage] = useState<CadenceStage | 'all'>('all')
   const [selectedResponse, setSelectedResponse] = useState<ResponseStatus | 'all'>('all')
   const [selectedInterest, setSelectedInterest] = useState<InterestLevel | 'all'>('all')
+  const [selectedDDD, setSelectedDDD] = useState<string>('all')
   const [darkMode, setDarkMode] = useState(true)
 
   // Modals state
@@ -58,6 +59,24 @@ export function App() {
       const updated = contacts.find(c => c.id === drawerContact.id)
       if (updated) setDrawerContact(updated)
     }
+  }, [contacts])
+
+  // Extract available DDDs dynamically
+  const availableDDDs = useMemo(() => {
+    const dddSet = new Set<string>()
+    contacts.forEach(c => {
+      const digits = (c.phone || '').replace(/\D/g, '')
+      let ddd = ''
+      if (digits.startsWith('55') && digits.length >= 12) {
+        ddd = digits.substring(2, 4)
+      } else if (digits.length >= 10) {
+        ddd = digits.substring(0, 2)
+      }
+      if (ddd && ddd.length === 2) {
+        dddSet.add(ddd)
+      }
+    })
+    return Array.from(dddSet).sort((a, b) => a.localeCompare(b))
   }, [contacts])
 
   // Save contacts helper
@@ -298,40 +317,65 @@ export function App() {
     handleSaveContacts([...newBatch, ...contacts])
   }
 
-  // Filtered contacts calculation
+  // Filtered contacts calculation with Enhanced Phone Search
   const todayStr = new Date().toISOString().split('T')[0]
 
   const filteredContacts = useMemo(() => {
     return contacts.filter(c => {
-      // 1. Search Query
+      // 1. Search Query (Enhanced for Phone Digits, DDD, Formatted and Clean numbers)
       if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
+        const q = searchQuery.toLowerCase().trim()
+        const qDigits = searchQuery.replace(/\D/g, '')
+
         const matchName = (c.name || '').toLowerCase().includes(q)
-        const matchPhone = (c.phone || '').includes(q) || (c.cleanPhone || '').includes(q)
         const matchEmail = (c.email || '').toLowerCase().includes(q)
         const matchCompany = (c.company || '').toLowerCase().includes(q)
         const matchTags = c.tags.some(t => t.toLowerCase().includes(q))
+        
+        // Deep Phone Match:
+        const cPhoneRaw = (c.phone || '').toLowerCase()
+        const cPhoneDigits = (c.phone || '').replace(/\D/g, '')
+        const cCleanPhone = (c.cleanPhone || '')
+        
+        const matchPhone = 
+          cPhoneRaw.includes(q) ||
+          (qDigits.length > 0 && (cPhoneDigits.includes(qDigits) || cCleanPhone.includes(qDigits)))
+
         if (!matchName && !matchPhone && !matchEmail && !matchCompany && !matchTags) {
           return false
         }
       }
 
-      // 2. Stage Filter
+      // 2. DDD Filter
+      if (selectedDDD !== 'all') {
+        const digits = (c.phone || '').replace(/\D/g, '')
+        let ddd = ''
+        if (digits.startsWith('55') && digits.length >= 12) {
+          ddd = digits.substring(2, 4)
+        } else if (digits.length >= 10) {
+          ddd = digits.substring(0, 2)
+        }
+        if (ddd !== selectedDDD) {
+          return false
+        }
+      }
+
+      // 3. Stage Filter
       if (selectedStage !== 'all' && c.stage !== selectedStage) {
         return false
       }
 
-      // 3. Response Status Filter
+      // 4. Response Status Filter
       if (selectedResponse !== 'all' && c.responseStatus !== selectedResponse) {
         return false
       }
 
-      // 4. Interest Filter
+      // 5. Interest Filter
       if (selectedInterest !== 'all' && c.interestLevel !== selectedInterest) {
         return false
       }
 
-      // 5. Follow-up Filter Badges
+      // 6. Follow-up Filter Badges
       if (activeFilter === 'today') {
         return c.nextFollowUpDate === todayStr && c.stage !== 'fechado' && c.stage !== 'perdido'
       } else if (activeFilter === 'overdue') {
@@ -346,13 +390,14 @@ export function App() {
 
       return true
     })
-  }, [contacts, searchQuery, selectedStage, selectedResponse, selectedInterest, activeFilter, todayStr])
+  }, [contacts, searchQuery, selectedDDD, selectedStage, selectedResponse, selectedInterest, activeFilter, todayStr])
 
   const hasActiveFilters = 
     activeFilter !== 'all' || 
     selectedStage !== 'all' || 
     selectedResponse !== 'all' || 
     selectedInterest !== 'all' || 
+    selectedDDD !== 'all' ||
     Boolean(searchQuery)
 
   const handleClearFilters = () => {
@@ -360,6 +405,7 @@ export function App() {
     setSelectedStage('all')
     setSelectedResponse('all')
     setSelectedInterest('all')
+    setSelectedDDD('all')
     setSearchQuery('')
   }
 
@@ -405,6 +451,9 @@ export function App() {
           setSelectedResponse={setSelectedResponse}
           selectedInterest={selectedInterest}
           setSelectedInterest={setSelectedInterest}
+          selectedDDD={selectedDDD}
+          setSelectedDDD={setSelectedDDD}
+          availableDDDs={availableDDDs}
           onClearFilters={handleClearFilters}
           hasActiveFilters={hasActiveFilters}
         />

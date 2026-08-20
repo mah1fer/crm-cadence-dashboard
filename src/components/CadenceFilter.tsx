@@ -1,6 +1,6 @@
 import React from 'react'
 import { CadenceStage, ResponseStatus, InterestLevel, FollowUpFilter, STAGES_CONFIG } from '../types/crm'
-import { Filter, X, Calendar, AlertTriangle, Flame, CheckCircle2, Clock } from 'lucide-react'
+import { Filter, X, Calendar, AlertTriangle, Flame, CheckCircle2, Clock, Phone } from 'lucide-react'
 
 interface CadenceFilterProps {
   activeFilter: FollowUpFilter;
@@ -11,6 +11,9 @@ interface CadenceFilterProps {
   setSelectedResponse: (resp: ResponseStatus | 'all') => void;
   selectedInterest: InterestLevel | 'all';
   setSelectedInterest: (interest: InterestLevel | 'all') => void;
+  selectedDDD: string;
+  setSelectedDDD: (ddd: string) => void;
+  availableDDDs: string[];
   onClearFilters: () => void;
   hasActiveFilters: boolean;
 }
@@ -24,6 +27,9 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
   setSelectedResponse,
   selectedInterest,
   setSelectedInterest,
+  selectedDDD,
+  setSelectedDDD,
+  availableDDDs,
   onClearFilters,
   hasActiveFilters
 }) => {
@@ -37,7 +43,7 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
           <button
             onClick={() => setActiveFilter('all')}
             className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-              activeFilter === 'all' && selectedStage === 'all' && selectedResponse === 'all' && selectedInterest === 'all'
+              activeFilter === 'all' && selectedStage === 'all' && selectedResponse === 'all' && selectedInterest === 'all' && selectedDDD === 'all'
                 ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                 : 'bg-secondary/70 text-secondary-foreground hover:bg-secondary border border-border/50'
             }`}
@@ -107,9 +113,29 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
 
         </div>
 
-        {/* Dropdown Filters */}
+        {/* Dropdown Filters (including Phone / DDD Filter) */}
         <div className="flex flex-wrap items-center gap-2">
           
+          {/* DDD / Phone Filter */}
+          <div className="relative flex items-center">
+            <div className="absolute left-2.5 pointer-events-none text-emerald-400">
+              <Phone className="w-3 h-3" />
+            </div>
+            <select
+              value={selectedDDD}
+              onChange={(e) => setSelectedDDD(e.target.value)}
+              aria-label="Filtrar por DDD do Telefone"
+              className="pl-7 pr-3 py-1 text-xs rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+            >
+              <option value="all" className="bg-popover text-popover-foreground">Todos os Telefones (DDDs)</option>
+              {availableDDDs.map(ddd => (
+                <option key={ddd} value={ddd} className="bg-popover text-popover-foreground">
+                  DDD ({ddd})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Stage Dropdown */}
           <div className="relative">
             <select
@@ -118,9 +144,9 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
               aria-label="Filtrar por estágio da cadência"
               className="px-2.5 py-1 text-xs rounded-lg bg-secondary/70 border border-border/80 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="all">Todos os Estágios</option>
+              <option value="all" className="bg-popover text-popover-foreground">Todos os Estágios</option>
               {Object.entries(STAGES_CONFIG).map(([key, config]) => (
-                <option key={key} value={key}>
+                <option key={key} value={key} className="bg-popover text-popover-foreground">
                   {config.name}
                 </option>
               ))}
@@ -135,11 +161,11 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
               aria-label="Filtrar por status de resposta"
               className="px-2.5 py-1 text-xs rounded-lg bg-secondary/70 border border-border/80 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="all">Todas as Respostas</option>
-              <option value="respondeu">✅ Respondeu</option>
-              <option value="aguardando">⏳ Aguardando Resposta</option>
-              <option value="nao_respondeu">❌ Não Respondeu</option>
-              <option value="ligar_depois">📞 Pediu para Retornar</option>
+              <option value="all" className="bg-popover text-popover-foreground">Todas as Respostas</option>
+              <option value="respondeu" className="bg-popover text-popover-foreground">✅ Respondeu</option>
+              <option value="aguardando" className="bg-popover text-popover-foreground">⏳ Aguardando Resposta</option>
+              <option value="nao_respondeu" className="bg-popover text-popover-foreground">❌ Não Respondeu</option>
+              <option value="ligar_depois" className="bg-popover text-popover-foreground">📞 Pediu para Retornar</option>
             </select>
           </div>
 
@@ -151,11 +177,11 @@ export const CadenceFilter: React.FC<CadenceFilterProps> = ({
               aria-label="Filtrar por nível de interesse"
               className="px-2.5 py-1 text-xs rounded-lg bg-secondary/70 border border-border/80 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
             >
-              <option value="all">Todos os Interesses</option>
-              <option value="alto">🔥 Alto Interesse</option>
-              <option value="medio">⚡ Médio Interesse</option>
-              <option value="baixo">❄️ Baixo Interesse</option>
-              <option value="nenhum">⛔ Sem Interesse</option>
+              <option value="all" className="bg-popover text-popover-foreground">Todos os Interesses</option>
+              <option value="alto" className="bg-popover text-popover-foreground">🔥 Alto Interesse</option>
+              <option value="medio" className="bg-popover text-popover-foreground">⚡ Médio Interesse</option>
+              <option value="baixo" className="bg-popover text-popover-foreground">❄️ Baixo Interesse</option>
+              <option value="nenhum" className="bg-popover text-popover-foreground">⛔ Sem Interesse</option>
             </select>
           </div>
 
