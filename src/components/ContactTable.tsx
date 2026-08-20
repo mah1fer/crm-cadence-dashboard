@@ -12,7 +12,6 @@ import {
   Mail, 
   MessageSquare, 
   Copy, 
-  MoreHorizontal, 
   CalendarPlus, 
   Flame, 
   Zap, 
@@ -20,13 +19,21 @@ import {
   Ban,
   CheckCircle2,
   Clock,
-  ExternalLink,
-  ChevronRight,
   Eye,
   Edit2,
-  Trash2
+  Trash2,
+  UserCheck,
+  Sparkles
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+const InstagramIcon = ({ className = "w-3 h-3" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+)
 
 interface ContactTableProps {
   contacts: Contact[];
@@ -126,7 +133,7 @@ export const ContactTable: React.FC<ContactTableProps> = ({
           Nenhum contato encontrado
         </h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
-          Não há contatos correspondentes aos filtros selecionados ou sua lista está vazia.
+          Não há contatos correspondentes aos filtros selecionados.
         </p>
       </div>
     )
@@ -143,10 +150,10 @@ export const ContactTable: React.FC<ContactTableProps> = ({
               <th className="py-3.5 px-4 sm:px-6">Nome do Contato</th>
               <th className="py-3.5 px-4 font-bold text-foreground">Telefone / WhatsApp ⭐</th>
               <th className="py-3.5 px-4">E-mail</th>
-              <th className="py-3.5 px-4">Cadência & Estágio</th>
+              <th className="py-3.5 px-4">Como Conheceu / Indicação</th>
+              <th className="py-3.5 px-4">Cadência</th>
               <th className="py-3.5 px-4">Resposta</th>
               <th className="py-3.5 px-4">Interesse</th>
-              <th className="py-3.5 px-4">Próximo Follow-up</th>
               <th className="py-3.5 px-4 text-right">Ações</th>
             </tr>
           </thead>
@@ -157,13 +164,13 @@ export const ContactTable: React.FC<ContactTableProps> = ({
               const followUp = getFollowUpStatus(contact)
               const stageInfo = STAGES_CONFIG[contact.stage] || STAGES_CONFIG.novo
               const waUrl = getWhatsAppLink(contact.cleanPhone || contact.phone, contact.name)
+              const igHandle = contact.instagram ? contact.instagram.replace(/['@]/g, '').replace('https://www.instagram.com/', '').replace('/', '') : ''
 
               return (
                 <tr 
                   key={contact.id} 
                   className="hover:bg-secondary/30 transition-colors group cursor-pointer"
                   onClick={(e) => {
-                    // Prevent triggering row click when clicking action buttons
                     if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('a') || (e.target as HTMLElement).closest('select')) {
                       return
                     }
@@ -171,7 +178,7 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                   }}
                 >
                   
-                  {/* 1. NOME DA PESSOA (EM DESTAQUE) */}
+                  {/* 1. NOME DA PESSOA (EM DESTAQUE REAL) */}
                   <td className="py-4 px-4 sm:px-6">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${getAvatarColor(contact.name)} flex items-center justify-center font-bold text-sm shadow-sm shrink-0`}>
@@ -181,14 +188,31 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                         <div className="font-heading font-semibold text-foreground text-sm group-hover:text-primary transition-colors flex items-center gap-2">
                           {contact.name}
                         </div>
-                        {(contact.company || contact.role) && (
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                            {contact.role ? `${contact.role} · ` : ''}{contact.company}
-                          </p>
-                        )}
-                        {contact.notes && (
+
+                        {/* Instagram ou Empresa */}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {contact.instagram && (
+                            <a
+                              href={`https://instagram.com/${igHandle}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] text-pink-400 hover:underline flex items-center gap-1 font-mono"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <InstagramIcon className="w-3 h-3" />
+                              @{igHandle}
+                            </a>
+                          )}
+                          {contact.company && (
+                            <span className="text-xs text-muted-foreground truncate max-w-[140px]">
+                              · {contact.company}
+                            </span>
+                          )}
+                        </div>
+
+                        {contact.motivation && (
                           <p className="text-[11px] text-muted-foreground/80 italic line-clamp-1 max-w-[220px] mt-0.5">
-                            "{contact.notes}"
+                            "{contact.motivation}"
                           </p>
                         )}
                       </div>
@@ -203,46 +227,51 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                           {formatPhoneNumber(contact.phone)}
                         </span>
                         <div className="flex items-center gap-1 mt-1">
-                          {/* Direct WhatsApp button */}
-                          <a
-                            href={waUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white border border-emerald-500/40 transition-all shadow-sm"
-                            title="Abrir WhatsApp Web / App"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MessageSquare className="w-3 h-3 fill-current" />
-                            WhatsApp
-                          </a>
+                          {contact.cleanPhone ? (
+                            <a
+                              href={waUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500 hover:text-white border border-emerald-500/40 transition-all shadow-sm"
+                              title="Abrir WhatsApp Web / App"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MessageSquare className="w-3 h-3 fill-current" />
+                              WhatsApp
+                            </a>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground/60 italic">Sem WhatsApp</span>
+                          )}
 
-                          {/* Copy Phone button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleCopy(contact.phone, 'Telefone')
-                            }}
-                            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
-                            title="Copiar Telefone"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
+                          {contact.phone && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleCopy(contact.phone, 'Telefone')
+                              }}
+                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                              title="Copiar Telefone"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          )}
 
-                          {/* Call Button */}
-                          <a
-                            href={`tel:${contact.phone.replace(/\D/g, '')}`}
-                            className="p-1 rounded text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
-                            title="Ligar para contato"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Phone className="w-3 h-3" />
-                          </a>
+                          {contact.cleanPhone && (
+                            <a
+                              href={`tel:${contact.cleanPhone}`}
+                              className="p-1 rounded text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10 transition-all"
+                              title="Ligar para contato"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Phone className="w-3 h-3" />
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>
                   </td>
 
-                  {/* 3. E-MAIL DA PESSOA (SEPARADO E LIMPO) */}
+                  {/* 3. E-MAIL DA PESSOA */}
                   <td className="py-4 px-4">
                     {contact.email ? (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
@@ -270,7 +299,21 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                     )}
                   </td>
 
-                  {/* 4. CADÊNCIA & ESTÁGIO */}
+                  {/* 4. COMO CONHECEU / QUEM INDICOU */}
+                  <td className="py-4 px-4">
+                    {contact.referrer ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-violet-500/10 text-violet-300 border border-violet-500/25 truncate max-w-[180px]" title={contact.referrer}>
+                          <UserCheck className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                          {contact.referrer}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/60 italic">Inscrição Direta</span>
+                    )}
+                  </td>
+
+                  {/* 5. CADÊNCIA & ESTÁGIO */}
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       <select
@@ -287,35 +330,14 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                     </div>
                   </td>
 
-                  {/* 5. RESPOSTA */}
+                  {/* 6. RESPOSTA */}
                   <td className="py-4 px-4">
                     {renderResponseStatusBadge(contact.responseStatus)}
                   </td>
 
-                  {/* 6. INTERESSE */}
+                  {/* 7. INTERESSE */}
                   <td className="py-4 px-4">
                     {renderInterestBadge(contact.interestLevel)}
-                  </td>
-
-                  {/* 7. PRÓXIMO FOLLOW-UP */}
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium border ${followUp.badgeClass}`}>
-                        {followUp.label}
-                      </span>
-                      {contact.stage !== 'fechado' && contact.stage !== 'perdido' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onAdvanceFollowUp(contact.id, 3)
-                          }}
-                          className="p-1 rounded text-xs text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                          title="Adiar follow-up +3 dias"
-                        >
-                          <CalendarPlus className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
                   </td>
 
                   {/* 8. AÇÕES */}
@@ -326,7 +348,7 @@ export const ContactTable: React.FC<ContactTableProps> = ({
                       <button
                         onClick={() => onSelectContact(contact)}
                         className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-                        title="Ver histórico e anotações"
+                        title="Ver detalhes da imersão e anotações"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -365,8 +387,8 @@ export const ContactTable: React.FC<ContactTableProps> = ({
 
       {/* Footer Info */}
       <div className="py-3 px-6 bg-secondary/20 border-t border-border/50 flex items-center justify-between text-xs text-muted-foreground">
-        <span>Exibindo <strong>{contacts.length}</strong> contatos organizados</span>
-        <span className="text-[11px] text-muted-foreground/80">💡 Clique em qualquer linha para abrir notas e histórico</span>
+        <span>Exibindo <strong>{contacts.length}</strong> contatos organizados como Novos Leads</span>
+        <span className="text-[11px] text-muted-foreground/80">💡 Clique em qualquer linha para ver os dados completos da Imersão</span>
       </div>
     </div>
   )

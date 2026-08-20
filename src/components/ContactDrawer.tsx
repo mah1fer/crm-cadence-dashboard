@@ -15,20 +15,28 @@ import {
   MessageSquare, 
   Calendar, 
   Clock, 
-  Plus, 
   Send, 
   Copy, 
   Building, 
   Edit2, 
   Trash2, 
-  Flame, 
-  Zap, 
-  Snowflake,
   ExternalLink,
   History,
-  Sparkles
+  Sparkles,
+  UserCheck,
+  Target,
+  Trophy,
+  HelpCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
+
+const InstagramIcon = ({ className = "w-3.5 h-3.5" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+    <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+  </svg>
+)
 
 interface ContactDrawerProps {
   contact: Contact | null;
@@ -62,6 +70,7 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
   const stageInfo = STAGES_CONFIG[contact.stage] || STAGES_CONFIG.novo
   const followUp = getFollowUpStatus(contact)
+  const igHandle = contact.instagram ? contact.instagram.replace(/['@]/g, '').replace('https://www.instagram.com/', '').replace('/', '') : ''
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -76,22 +85,24 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
     toast.success('Anotação registrada no histórico!')
   }
 
+  const firstName = contact.name.split(' ')[0]
+
   const templates = [
     {
-      title: 'Apresentação Inicial',
-      msg: `Olá ${contact.name.split(' ')[0]}! Tudo bem? Passando para te apresentar nossa proposta e entender como podemos te ajudar hoje.`
+      title: 'Boas-vindas Imersão',
+      msg: `Olá ${firstName}! Tudo bem? Vi que você se inscreveu para a imersão${contact.referrer ? ` (por indicação: ${contact.referrer})` : ''}. Gostaria de dar as boas-vindas e me colocar à total disposição!`
     },
     {
-      title: 'Follow-up 1 (Reforço)',
-      msg: `Olá ${contact.name.split(' ')[0]}! Tudo bem? Conseguiu dar uma olhada na mensagem anterior? Fico à total disposição para tirar dúvidas!`
+      title: 'Foco no Objetivo',
+      msg: `Olá ${firstName}! Tudo bem? Vi que seu foco principal é ${contact.motivation ? `"${contact.motivation}"` : 'aplicar novas ferramentas'}. Vamos alinhar como podemos acelerar isso na prática?`
     },
     {
-      title: 'Follow-up 2 (Agendar Reunião)',
-      msg: `Olá ${contact.name.split(' ')[0]}! Que tal marcarmos um bate-papo rápido de 10 minutos esta semana para alinharmos os detalhes?`
+      title: 'Follow-up de Reforço',
+      msg: `Olá ${firstName}! Tudo bem? Conseguiu dar uma olhada no material e nas orientações que te enviei? Fico à disposição para tirar qualquer dúvida!`
     },
     {
-      title: 'Fechamento de Proposta',
-      msg: `Olá ${contact.name.split(' ')[0]}! Gostaria de saber se você já tem um retorno sobre a proposta que enviamos.`
+      title: 'Agendar Alinhamento',
+      msg: `Olá ${firstName}! Que tal marcarmos um bate-papo rápido de 10 minutos para alinharmos os próximos passos da sua participação?`
     }
   ]
 
@@ -117,12 +128,27 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
                   <h3 className="font-heading font-bold text-lg text-foreground">
                     {contact.name}
                   </h3>
-                  {(contact.company || contact.role) && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
-                      <Building className="w-3.5 h-3.5" />
-                      {contact.role ? `${contact.role} · ` : ''}{contact.company}
-                    </p>
-                  )}
+                  
+                  {/* Instagram & Empresa */}
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {contact.instagram && (
+                      <a
+                        href={`https://instagram.com/${igHandle}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-pink-400 hover:underline font-mono bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/20"
+                      >
+                        <InstagramIcon className="w-3.5 h-3.5" />
+                        @{igHandle}
+                      </a>
+                    )}
+                    {(contact.company || contact.role) && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Building className="w-3.5 h-3.5" />
+                        {contact.role ? `${contact.role} · ` : ''}{contact.company}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -169,20 +195,24 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleCopy(contact.phone, 'Telefone')}
-                    className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
-                    title="Copiar"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                  </button>
-                  <a
-                    href={`tel:${contact.phone.replace(/\D/g, '')}`}
-                    className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10"
-                    title="Ligar"
-                  >
-                    <Phone className="w-3.5 h-3.5" />
-                  </a>
+                  {contact.phone && (
+                    <button
+                      onClick={() => handleCopy(contact.phone, 'Telefone')}
+                      className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-secondary"
+                      title="Copiar"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {contact.cleanPhone && (
+                    <a
+                      href={`tel:${contact.cleanPhone}`}
+                      className="p-1.5 rounded text-emerald-400 hover:bg-emerald-500/10"
+                      title="Ligar"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -223,7 +253,54 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
           {/* Drawer Body / Scrollable Content */}
           <div className="p-6 overflow-y-auto flex-1 space-y-6">
             
-            {/* 1. Cadência & Status do Lead */}
+            {/* 1. DADOS ESPECÍFICOS DA IMERSÃO */}
+            <div className="bg-violet-500/10 p-4 rounded-xl border border-violet-500/30 space-y-3">
+              <span className="text-xs font-bold text-violet-300 flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-violet-400" />
+                Dados da Imersão & Origem
+              </span>
+
+              {/* Como conheceu / Quem indicou */}
+              {contact.referrer && (
+                <div>
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 mb-0.5">
+                    <UserCheck className="w-3.5 h-3.5 text-violet-400" />
+                    Como conheceu / Quem indicou:
+                  </span>
+                  <p className="text-xs font-medium text-foreground bg-card/60 p-2 rounded-lg border border-violet-500/20">
+                    {contact.referrer}
+                  </p>
+                </div>
+              )}
+
+              {/* Por que participar é importante */}
+              {contact.motivation && (
+                <div>
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 mb-0.5">
+                    <Target className="w-3.5 h-3.5 text-indigo-400" />
+                    Por que participar dessa imersão é importante:
+                  </span>
+                  <p className="text-xs text-foreground/90 bg-card/60 p-2.5 rounded-lg border border-border/80 leading-relaxed italic">
+                    "{contact.motivation}"
+                  </p>
+                </div>
+              )}
+
+              {/* Critério de sucesso */}
+              {contact.successCriteria && (
+                <div>
+                  <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1 mb-0.5">
+                    <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                    O que precisa acontecer para valer a pena:
+                  </span>
+                  <p className="text-xs text-foreground/90 bg-card/60 p-2.5 rounded-lg border border-border/80 leading-relaxed">
+                    {contact.successCriteria}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Cadência & Status do Lead */}
             <div className="bg-secondary/20 p-4 rounded-xl border border-border/80 space-y-3">
               <span className="text-xs font-bold text-foreground block uppercase tracking-wider">
                 Controle de Cadência & Follow-up
@@ -298,54 +375,56 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
             </div>
 
-            {/* 2. Disparador Rápido de WhatsApp com Modelos */}
-            <div className="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
-                  <MessageSquare className="w-4 h-4 fill-emerald-400/20" />
-                  Modelos de Mensagem WhatsApp
-                </span>
-                <span className="text-[10px] text-muted-foreground">Clique para carregar</span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5">
-                {templates.map((tpl, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setQuickTemplate(tpl.msg)}
-                    className="p-2 text-left rounded-lg bg-card/60 hover:bg-card border border-border/80 hover:border-emerald-500/40 text-xs text-muted-foreground hover:text-foreground transition-all"
-                  >
-                    <span className="font-semibold block text-[11px] text-emerald-300 truncate">
-                      {tpl.title}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {quickTemplate && (
-                <div className="relative mt-2">
-                  <textarea
-                    rows={3}
-                    value={quickTemplate}
-                    onChange={(e) => setQuickTemplate(e.target.value)}
-                    className="w-full p-2.5 text-xs rounded-lg bg-card border border-emerald-500/30 text-foreground resize-none focus:outline-none"
-                  />
+            {/* 3. Disparador Rápido de WhatsApp com Modelos */}
+            {contact.cleanPhone && (
+              <div className="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 uppercase tracking-wider">
+                    <MessageSquare className="w-4 h-4 fill-emerald-400/20" />
+                    Modelos de Mensagem WhatsApp
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">Clique para carregar</span>
                 </div>
-              )}
 
-              <a
-                href={currentWaUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.01]"
-              >
-                <MessageSquare className="w-4 h-4 fill-current" />
-                <span>Abrir Conversa no WhatsApp</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {templates.map((tpl, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setQuickTemplate(tpl.msg)}
+                      className="p-2 text-left rounded-lg bg-card/60 hover:bg-card border border-border/80 hover:border-emerald-500/40 text-xs text-muted-foreground hover:text-foreground transition-all"
+                    >
+                      <span className="font-semibold block text-[11px] text-emerald-300 truncate">
+                        {tpl.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
 
-            {/* 3. Anotações Rápidas & Histórico */}
+                {quickTemplate && (
+                  <div className="relative mt-2">
+                    <textarea
+                      rows={3}
+                      value={quickTemplate}
+                      onChange={(e) => setQuickTemplate(e.target.value)}
+                      className="w-full p-2.5 text-xs rounded-lg bg-card border border-emerald-500/30 text-foreground resize-none focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                <a
+                  href={currentWaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-white flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 transition-all hover:scale-[1.01]"
+                >
+                  <MessageSquare className="w-4 h-4 fill-current" />
+                  <span>Abrir Conversa no WhatsApp</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
+
+            {/* 4. Anotações Rápidas & Histórico */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center gap-1.5">
@@ -403,7 +482,7 @@ export const ContactDrawer: React.FC<ContactDrawerProps> = ({
 
           {/* Footer */}
           <div className="p-4 border-t border-border bg-secondary/20 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Criado em: {new Date(contact.createdAt).toLocaleDateString('pt-BR')}</span>
+            <span>Cadastrado em: {new Date(contact.createdAt).toLocaleDateString('pt-BR')}</span>
             <button
               onClick={onClose}
               className="px-4 py-1.5 rounded-lg bg-secondary text-foreground hover:bg-secondary/80 border border-border font-medium"

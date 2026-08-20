@@ -31,8 +31,12 @@ export interface Contact {
   id: string;
   name: string;
   phone: string;
-  cleanPhone: string; // apenas digitos para wa.me
+  cleanPhone: string; // apenas dígitos para wa.me
   email: string;
+  instagram?: string;
+  referrer?: string; // Como nos conheceu / Quem indicou
+  motivation?: string; // Por que participar dessa imersão é importante
+  successCriteria?: string; // O que precisa acontecer para valer a pena
   company?: string;
   role?: string;
   stage: CadenceStage;
@@ -68,9 +72,9 @@ export const STAGES_CONFIG: Record<CadenceStage, StageDefinition> = {
     id: 'novo',
     name: 'Novo Lead',
     shortName: 'Novo',
-    color: 'text-slate-400',
-    badgeBg: 'bg-slate-500/10 text-slate-300 border-slate-700/50',
-    borderColor: 'border-slate-600/30',
+    color: 'text-blue-400',
+    badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-600/40',
+    borderColor: 'border-blue-500/30',
     defaultFollowUpDays: 0,
     description: 'Contato recém-adicionado, aguardando envio da 1ª mensagem.'
   },
@@ -78,9 +82,9 @@ export const STAGES_CONFIG: Record<CadenceStage, StageDefinition> = {
     id: 'primeiro_contato',
     name: '1º Contato Enviado',
     shortName: '1º Contato',
-    color: 'text-blue-400',
-    badgeBg: 'bg-blue-500/10 text-blue-300 border-blue-700/50',
-    borderColor: 'border-blue-500/30',
+    color: 'text-indigo-400',
+    badgeBg: 'bg-indigo-500/10 text-indigo-300 border-indigo-700/50',
+    borderColor: 'border-indigo-500/30',
     defaultFollowUpDays: 2,
     description: 'Primeira mensagem enviada, aguardando resposta.'
   },
@@ -88,9 +92,9 @@ export const STAGES_CONFIG: Record<CadenceStage, StageDefinition> = {
     id: 'followup_1',
     name: 'Follow-up 1 (Dia 2)',
     shortName: 'FUP 1',
-    color: 'text-indigo-400',
-    badgeBg: 'bg-indigo-500/10 text-indigo-300 border-indigo-700/50',
-    borderColor: 'border-indigo-500/30',
+    color: 'text-purple-400',
+    badgeBg: 'bg-purple-500/10 text-purple-300 border-purple-700/50',
+    borderColor: 'border-purple-500/30',
     defaultFollowUpDays: 2,
     description: 'Lead não respondeu ao 1º contato. Envio do 1º reforço.'
   },
@@ -108,9 +112,9 @@ export const STAGES_CONFIG: Record<CadenceStage, StageDefinition> = {
     id: 'respondeu_qualificando',
     name: 'Respondeu / Qualificando',
     shortName: 'Qualificando',
-    color: 'text-purple-400',
-    badgeBg: 'bg-purple-500/10 text-purple-300 border-purple-700/50',
-    borderColor: 'border-purple-500/30',
+    color: 'text-cyan-400',
+    badgeBg: 'bg-cyan-500/10 text-cyan-300 border-cyan-700/50',
+    borderColor: 'border-cyan-500/30',
     defaultFollowUpDays: 1,
     description: 'O lead respondeu e a conversa está em andamento.'
   },

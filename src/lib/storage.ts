@@ -1,7 +1,7 @@
 import { Contact } from '../types/crm'
 import { INITIAL_CONTACTS } from '../data/initialContacts'
 
-const STORAGE_KEY = 'morf_pro_crm_contacts_v2'
+const STORAGE_KEY = 'morf_pro_crm_contacts_v3'
 
 export function loadContacts(): Contact[] {
   try {
@@ -38,18 +38,21 @@ export function exportContactsAsJSON(contacts: Contact[]): void {
 }
 
 export function exportContactsAsCSV(contacts: Contact[]): void {
-  const headers = ['Nome', 'Telefone', 'Email', 'Empresa', 'Cargo', 'Estagio Cadencia', 'Status Resposta', 'Interesse', 'Proximo Follow-up', 'Tags', 'Notas']
+  const headers = ['Nome', 'Telefone', 'Email', 'Instagram', 'Como Conheceu / Indicação', 'Motivação Imersão', 'Critério de Sucesso', 'Empresa', 'Cargo', 'Estágio', 'Status Resposta', 'Interesse', 'Próximo Follow-up', 'Notas']
   const rows = contacts.map(c => [
     `"${(c.name || '').replace(/"/g, '""')}"`,
     `"${(c.phone || '').replace(/"/g, '""')}"`,
     `"${(c.email || '').replace(/"/g, '""')}"`,
+    `"${(c.instagram || '').replace(/"/g, '""')}"`,
+    `"${(c.referrer || '').replace(/"/g, '""')}"`,
+    `"${(c.motivation || '').replace(/"/g, '""')}"`,
+    `"${(c.successCriteria || '').replace(/"/g, '""')}"`,
     `"${(c.company || '').replace(/"/g, '""')}"`,
     `"${(c.role || '').replace(/"/g, '""')}"`,
     `"${c.stage}"`,
     `"${c.responseStatus}"`,
     `"${c.interestLevel}"`,
     `"${c.nextFollowUpDate || ''}"`,
-    `"${(c.tags || []).join('; ')}"`,
     `"${(c.notes || '').replace(/"/g, '""')}"`
   ])
 
