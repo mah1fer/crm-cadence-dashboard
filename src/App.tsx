@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { Contact, CadenceStage, ResponseStatus, InterestLevel, ViewMode, FollowUpFilter } from './types/crm'
-import { loadContacts, saveContacts, exportContactsAsCSV, exportContactsAsJSON } from './lib/storage'
+import { loadContacts, saveContacts, resetToDefaultContacts, exportContactsAsCSV, exportContactsAsJSON } from './lib/storage'
 import { addDaysToToday } from './lib/utils'
 import { Navbar } from './components/Navbar'
 import { MetricsCards } from './components/MetricsCards'
@@ -31,7 +31,7 @@ export function App() {
   const [drawerContact, setDrawerContact] = useState<Contact | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
-  // Load initial contacts
+  // Load initial contacts and listen for sync
   useEffect(() => {
     const loaded = loadContacts()
     setContacts(loaded)
@@ -79,7 +79,7 @@ export function App() {
     return Array.from(dddSet).sort((a, b) => a.localeCompare(b))
   }, [contacts])
 
-  // Save contacts helper
+  // Save contacts helper with automatic storage sync
   const handleSaveContacts = (newContacts: Contact[]) => {
     setContacts(newContacts)
     saveContacts(newContacts)
@@ -110,7 +110,7 @@ export function App() {
         return c
       })
       handleSaveContacts(updated)
-      toast.success('Contato atualizado com sucesso!')
+      toast.success('Contato atualizado e salvo com sucesso!')
     } else {
       // Create new
       const newContact: Contact = {
@@ -178,7 +178,87 @@ export function App() {
       return c
     })
     handleSaveContacts(updated)
-    toast.success('Estágio de cadência atualizado!')
+  }
+
+  // Update Response Status
+  const handleUpdateResponse = (contactId: string, responseStatus: ResponseStatus) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        const autoStage = (responseStatus === 'respondeu' && (c.stage === 'novo' || c.stage === 'primeiro_contato' || c.stage === 'followup_1'))
+          ? 'respondeu_qualificando'
+          : c.stage
+
+        return {
+          ...c,
+          responseStatus,
+          stage: autoStage as CadenceStage,
+          updatedAt: now,
+          interactionHistory: [
+            ...c.interactionHistory,
+            {
+              id: 'log_' + Math.random().toString(36).substring(2, 9),
+              timestamp: now,
+              type: 'whatsapp' as const,
+              content: `Status de resposta atualizado para: ${responseStatus}`
+            }
+          ]
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+  }
+
+  // Update Interest Level
+  const handleUpdateInterest = (contactId: string, interestLevel: InterestLevel) => {
+    const now = new Date().toISOString()
+    const updated = contacts.map(c => {
+      if (c.id === contactId) {
+        return {
+          ...c,
+          interestLevel,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+  }
+
+  // Bulk update stage
+  const handleBulkUpdateStage = (contactIds: string[], newStage: CadenceStage) => {
+    const now = new Date().toISOString()
+    const idSet = new Set(contactIds)
+    const updated = contacts.map(c => {
+      if (idSet.has(c.id)) {
+        return {
+          ...c,
+          stage: newStage,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
+  }
+
+  // Bulk mark replied
+  const handleBulkMarkReplied = (contactIds: string[]) => {
+    const now = new Date().toISOString()
+    const idSet = new Set(contactIds)
+    const updated = contacts.map(c => {
+      if (idSet.has(c.id)) {
+        return {
+          ...c,
+          responseStatus: 'respondeu' as ResponseStatus,
+          stage: (c.stage === 'novo' || c.stage === 'primeiro_contato' || c.stage === 'followup_1') ? 'respondeu_qualificando' as CadenceStage : c.stage,
+          updatedAt: now
+        }
+      }
+      return c
+    })
+    handleSaveContacts(updated)
   }
 
   // Quick Advance Follow-up (+X days)
@@ -210,28 +290,7 @@ export function App() {
 
   // Quick Mark Replied
   const handleQuickMarkReplied = (contactId: string) => {
-    const now = new Date().toISOString()
-    const updated = contacts.map(c => {
-      if (c.id === contactId) {
-        return {
-          ...c,
-          responseStatus: 'respondeu' as ResponseStatus,
-          stage: c.stage === 'novo' || c.stage === 'primeiro_contato' || c.stage === 'followup_1' || c.stage === 'followup_2' ? 'respondeu_qualificando' : c.stage,
-          updatedAt: now,
-          interactionHistory: [
-            ...c.interactionHistory,
-            {
-              id: 'log_' + Math.random().toString(36).substring(2, 9),
-              timestamp: now,
-              type: 'whatsapp' as const,
-              content: 'Marcado como: Respondeu ao contato.'
-            }
-          ]
-        }
-      }
-      return c
-    })
-    handleSaveContacts(updated)
+    handleUpdateResponse(contactId, 'respondeu')
     toast.success('Contato marcado como "Respondeu"!')
   }
 
@@ -278,43 +337,18 @@ export function App() {
     toast.success('Data de follow-up atualizada!')
   }
 
-  // Update response from drawer
-  const handleUpdateResponse = (contactId: string, responseStatus: ResponseStatus) => {
-    const now = new Date().toISOString()
-    const updated = contacts.map(c => {
-      if (c.id === contactId) {
-        return {
-          ...c,
-          responseStatus,
-          updatedAt: now
-        }
-      }
-      return c
-    })
-    handleSaveContacts(updated)
-    toast.success('Status de resposta atualizado!')
-  }
-
-  // Update interest from drawer
-  const handleUpdateInterest = (contactId: string, interestLevel: InterestLevel) => {
-    const now = new Date().toISOString()
-    const updated = contacts.map(c => {
-      if (c.id === contactId) {
-        return {
-          ...c,
-          interestLevel,
-          updatedAt: now
-        }
-      }
-      return c
-    })
-    handleSaveContacts(updated)
-    toast.success('Nível de interesse atualizado!')
-  }
-
   // Batch import from modal
   const handleImportBatch = (newBatch: Contact[]) => {
     handleSaveContacts([...newBatch, ...contacts])
+  }
+
+  // Reset to default
+  const handleResetDefault = () => {
+    if (confirm('Deseja restaurar a lista inicial de contatos da Imersão? Suas anotações personalizadas serão redefinidas.')) {
+      const resetList = resetToDefaultContacts()
+      setContacts(resetList)
+      toast.success('Lista restaurada com sucesso!')
+    }
   }
 
   // Filtered contacts calculation with Enhanced Phone Search
@@ -330,6 +364,8 @@ export function App() {
         const matchName = (c.name || '').toLowerCase().includes(q)
         const matchEmail = (c.email || '').toLowerCase().includes(q)
         const matchCompany = (c.company || '').toLowerCase().includes(q)
+        const matchReferrer = (c.referrer || '').toLowerCase().includes(q)
+        const matchInstagram = (c.instagram || '').toLowerCase().includes(q)
         const matchTags = c.tags.some(t => t.toLowerCase().includes(q))
         
         // Deep Phone Match:
@@ -341,7 +377,7 @@ export function App() {
           cPhoneRaw.includes(q) ||
           (qDigits.length > 0 && (cPhoneDigits.includes(qDigits) || cCleanPhone.includes(qDigits)))
 
-        if (!matchName && !matchPhone && !matchEmail && !matchCompany && !matchTags) {
+        if (!matchName && !matchPhone && !matchEmail && !matchCompany && !matchReferrer && !matchInstagram && !matchTags) {
           return false
         }
       }
@@ -409,6 +445,8 @@ export function App() {
     setSearchQuery('')
   }
 
+  const repliedCount = contacts.filter(c => c.responseStatus === 'respondeu').length
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Toaster position="top-right" richColors />
@@ -426,9 +464,11 @@ export function App() {
         onOpenImport={() => setIsImportModalOpen(true)}
         onExportCSV={() => exportContactsAsCSV(contacts)}
         onExportJSON={() => exportContactsAsJSON(contacts)}
+        onResetDefault={handleResetDefault}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         totalContacts={contacts.length}
+        repliedCount={repliedCount}
       />
 
       {/* Main Container */}
@@ -469,7 +509,11 @@ export function App() {
             }}
             onDeleteContact={handleDeleteContact}
             onUpdateStage={handleUpdateStage}
+            onUpdateResponse={handleUpdateResponse}
+            onUpdateInterest={handleUpdateInterest}
             onAdvanceFollowUp={handleAdvanceFollowUp}
+            onBulkUpdateStage={handleBulkUpdateStage}
+            onBulkMarkReplied={handleBulkMarkReplied}
           />
         )}
 
@@ -478,6 +522,7 @@ export function App() {
             contacts={filteredContacts}
             onSelectContact={(c) => setDrawerContact(c)}
             onUpdateStage={handleUpdateStage}
+            onUpdateResponse={handleUpdateResponse}
             onOpenNewContact={() => {
               setEditingContact(null)
               setIsModalOpen(true)

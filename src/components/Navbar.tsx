@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Users, 
   Plus, 
@@ -10,9 +10,14 @@ import {
   LayoutList, 
   Kanban, 
   Calendar,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  RefreshCw,
+  RotateCcw
 } from 'lucide-react'
 import { ViewMode } from '../types/crm'
+import { getLastSavedTime } from '../lib/storage'
+import { toast } from 'sonner'
 
 interface NavbarProps {
   viewMode: ViewMode;
@@ -23,9 +28,11 @@ interface NavbarProps {
   onOpenImport: () => void;
   onExportCSV: () => void;
   onExportJSON: () => void;
+  onResetDefault: () => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
   totalContacts: number;
+  repliedCount: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,16 +44,33 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenImport,
   onExportCSV,
   onExportJSON,
+  onResetDefault,
   darkMode,
   setDarkMode,
-  totalContacts
+  totalContacts,
+  repliedCount
 }) => {
+  const [lastSaved, setLastSaved] = useState<string>(getLastSavedTime())
+  const [savePing, setSavePing] = useState(false)
+
+  useEffect(() => {
+    const handleUpdate = (e: any) => {
+      const savedTime = e?.detail?.savedAt || getLastSavedTime()
+      setLastSaved(savedTime)
+      setSavePing(true)
+      setTimeout(() => setSavePing(false), 2000)
+    }
+
+    window.addEventListener('crm_contacts_updated', handleUpdate)
+    return () => window.removeEventListener('crm_contacts_updated', handleUpdate)
+  }, [])
+
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-md transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-4">
+        <div className="flex items-center justify-between h-16 gap-3">
           
-          {/* Logo & CRM Title */}
+          {/* Logo & Title */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25">
               <Sparkles className="w-5 h-5" />
@@ -60,9 +84,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                   CRM Cadência
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground hidden sm:block">
-                Gestão & Follow-up de Contatos ({totalContacts} leads)
-              </p>
+              
+              {/* Live Save Status Indicator */}
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`inline-flex items-center gap-1 text-[11px] font-medium transition-all ${
+                  savePing ? 'text-emerald-300 scale-105' : 'text-emerald-400/90'
+                }`}>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  Salvo ({lastSaved})
+                </span>
+                <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                  • {totalContacts} leads ({repliedCount} responderam)
+                </span>
+              </div>
             </div>
           </div>
 
@@ -94,7 +131,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'table'
-                  ? 'bg-card text-foreground shadow-sm'
+                  ? 'bg-card text-foreground shadow-sm font-bold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               title="Visualização em Tabela"
@@ -107,7 +144,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setViewMode('kanban')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'kanban'
-                  ? 'bg-card text-foreground shadow-sm'
+                  ? 'bg-card text-foreground shadow-sm font-bold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               title="Visualização em Funil / Kanban"
@@ -120,7 +157,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => setViewMode('agenda')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 viewMode === 'agenda'
-                  ? 'bg-card text-foreground shadow-sm'
+                  ? 'bg-card text-foreground shadow-sm font-bold'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
               title="Agenda de Follow-up do Dia"
@@ -131,29 +168,27 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             
             {/* Import Button */}
             <button
               onClick={onOpenImport}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/80 transition-all"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border/80 transition-all"
               title="Colar ou Importar Lista de Contatos"
             >
               <UploadCloud className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden lg:inline">Importar Lista</span>
+              <span className="hidden lg:inline">Importar</span>
             </button>
 
             {/* Export Dropdown / Button */}
-            <div className="relative group">
-              <button
-                onClick={onExportCSV}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/60 transition-all"
-                title="Exportar dados (CSV)"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden xl:inline">Exportar</span>
-              </button>
-            </div>
+            <button
+              onClick={onExportCSV}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary border border-border/60 transition-all"
+              title="Exportar contatos em CSV"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Exportar</span>
+            </button>
 
             {/* Dark / Light Mode Toggle */}
             <button
@@ -168,10 +203,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* New Contact Button */}
             <button
               onClick={onOpenNewContact}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-md shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <Plus className="w-4 h-4" />
-              <span>Novo Contato</span>
+              <span className="hidden sm:inline">Novo</span>
             </button>
           </div>
 
