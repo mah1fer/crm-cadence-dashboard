@@ -23,7 +23,7 @@ import { toast } from 'sonner'
 
 interface ContactKanbanProps {
   contacts: Contact[];
-  onSelectContact: (contact) => void;
+  onSelectContact: (contact: Contact) => void;
   onUpdateStage: (contactId: string, newStage: CadenceStage) => void;
   onUpdateResponse?: (contactId: string, responseStatus: ResponseStatus) => void;
   onOpenNewContact: () => void;
